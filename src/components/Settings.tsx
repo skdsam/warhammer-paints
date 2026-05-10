@@ -295,7 +295,6 @@ export function Settings() {
             </div>
           </div>
         </section>
-
       </div>
 
       <section className="mt-6 bg-bg-surface border border-border rounded-2xl p-6">

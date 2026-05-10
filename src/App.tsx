@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { PaintGrid } from "./components/PaintGrid";
 import { ColorWheel } from "./components/ColorWheel";
@@ -14,7 +14,7 @@ function App() {
   const [activeTab, setActiveTab] = useState("all");
 
   return (
-    <div className="flex min-h-screen bg-bg-dark text-text-primary">
+    <div className="flex min-h-screen bg-bg-dark text-text-primary transition-colors duration-500">
       {/* Sidebar - Fixed */}
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
