@@ -6,7 +6,6 @@ import { RecipeBuilder } from "./components/RecipeBuilder";
 import { ArmyPlanner } from "./components/ArmyPlanner";
 import { PaintConverter } from "./components/PaintConverter";
 import { Settings } from "./components/Settings";
-import { ModelGallery } from "./components/ModelGallery";
 import { Tutorials } from "./components/Tutorials";
 import { CreatorFeeds } from "./components/CreatorFeeds";
 import { motion, AnimatePresence } from "framer-motion";
@@ -37,7 +36,6 @@ function App() {
             {activeTab === "converter" && <PaintConverter />}
             {activeTab === "armies" && <ArmyPlanner />}
             {activeTab === "recipes" && <RecipeBuilder />}
-            {activeTab === "models" && <ModelGallery setActiveTab={setActiveTab} />}
             {activeTab === "tutorials" && <Tutorials />}
             {activeTab === "feeds" && <CreatorFeeds />}
             {activeTab === "settings" && <Settings />}

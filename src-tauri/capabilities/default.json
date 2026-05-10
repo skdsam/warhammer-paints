@@ -6,12 +6,17 @@
   "permissions": [
     "core:default",
     "opener:default",
+    "dialog:default",
+    "dialog:allow-save",
+    "fs:default",
+    "fs:allow-write-text-file",
     {
       "identifier": "http:default",
       "allow": [
-        {
-          "url": "https://www.youtube.com/feeds/*"
-        }
+        { "url": "https://www.youtube.com/feeds/**" },
+        { "url": "https://www.youtube.com/**" },
+        { "url": "https://youtube.com/**" },
+        { "url": "https://*.youtube.com/**" }
       ]
     }
   ]

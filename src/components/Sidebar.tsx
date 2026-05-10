@@ -20,7 +20,6 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     { id: 'converter', label: 'Converter', icon: RefreshCw },
     { id: 'armies', label: 'Army Planner', icon: LayoutGrid },
     { id: 'recipes', label: 'Paint Recipes', icon: ListChecks },
-    { id: 'models', label: 'Models', icon: ImageIcon },
     { id: 'tutorials', label: 'Tutorials & Guides', icon: BookOpen },
     { id: 'feeds', label: 'Creator Feeds', icon: Video },
   ];
