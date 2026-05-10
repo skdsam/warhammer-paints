@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { PaintGrid } from "./components/PaintGrid";
 import { ColorWheel } from "./components/ColorWheel";
