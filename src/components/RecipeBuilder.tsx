@@ -1,19 +1,69 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRecipeStore } from '../store/useRecipeStore';
 import { usePaintStore } from '../store/usePaintStore';
-import { Plus, Trash2, Save, ChevronRight, Palette } from 'lucide-react';
+import { Plus, Trash2, Save, ChevronRight, Palette, Pencil, Eye, X, BookOpen, Search, Image as ImageIcon } from 'lucide-react';
 import { Recipe, RecipeStep } from '../types/paint';
 
+const TECHNIQUES = [
+  'Basecoat', 'Layer', 'Wash', 'Glaze', 'Drybrush', 
+  'Edge Highlight', 'Contrast', 'Technical', 'Texture', 'Varnish', 'Shade'
+];
+
 export function RecipeBuilder() {
-  const { recipes, addRecipe, deleteRecipe } = useRecipeStore();
+  const { recipes, addRecipe, deleteRecipe, updateRecipe } = useRecipeStore();
   const { paints } = usePaintStore();
   const [isCreating, setIsCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingRecipe, setViewingRecipe] = useState<Recipe | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [newRecipe, setNewRecipe] = useState<Partial<Recipe>>({
     name: '',
     modelName: '',
+    imageUrl: '',
     steps: []
   });
+
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            setNewRecipe(prev => ({ ...prev, imageUrl: canvas.toDataURL('image/jpeg', 0.8) }));
+          }
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleAddStep = () => {
     setNewRecipe(prev => ({
@@ -29,20 +79,51 @@ export function RecipeBuilder() {
     }));
   };
 
+  const handleEdit = (recipe: Recipe) => {
+    setNewRecipe({
+      name: recipe.name,
+      modelName: recipe.modelName,
+      imageUrl: recipe.imageUrl || '',
+      steps: [...recipe.steps]
+    });
+    setEditingId(recipe.id);
+    setIsCreating(true);
+  };
+
+  const handleCloseForm = () => {
+    setIsCreating(false);
+    setEditingId(null);
+    setNewRecipe({ name: '', modelName: '', steps: [] });
+  };
+
   const handleSave = () => {
     if (!newRecipe.name) return;
     
-    addRecipe({
-      id: crypto.randomUUID(),
-      name: newRecipe.name,
-      modelName: newRecipe.modelName,
-      steps: newRecipe.steps || [],
-      author: 'SkdSam'
-    } as Recipe);
+    if (editingId) {
+      updateRecipe(editingId, {
+        name: newRecipe.name,
+        modelName: newRecipe.modelName,
+        imageUrl: newRecipe.imageUrl,
+        steps: newRecipe.steps || []
+      });
+    } else {
+      addRecipe({
+        id: crypto.randomUUID(),
+        name: newRecipe.name,
+        modelName: newRecipe.modelName,
+        imageUrl: newRecipe.imageUrl,
+        steps: newRecipe.steps || [],
+        author: 'SkdSam'
+      } as Recipe);
+    }
     
-    setIsCreating(false);
-    setNewRecipe({ name: '', modelName: '', steps: [] });
+    handleCloseForm();
   };
+
+  const filteredRecipes = recipes.filter(r => 
+    r.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    r.modelName?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="flex-1 overflow-y-auto p-8">
@@ -51,15 +132,27 @@ export function RecipeBuilder() {
           <h2 className="text-3xl font-black tracking-tight text-white uppercase italic">Recipe Vault</h2>
           <p className="text-text-muted text-sm mt-1">Archive your painting process for consistent results across your army.</p>
         </div>
-        {!isCreating && (
-          <button 
-            onClick={() => setIsCreating(true)}
-            className="flex items-center gap-2 bg-brand-primary hover:bg-red-700 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-brand-primary/20"
-          >
-            <Plus size={20} />
-            NEW RECIPE
-          </button>
-        )}
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+            <input 
+              type="text" 
+              placeholder="Search recipes..."
+              className="bg-bg-dark border border-border rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:border-brand-primary outline-none transition-all w-64"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
+          {!isCreating && (
+            <button 
+              onClick={() => { setIsCreating(true); setEditingId(null); }}
+              className="flex items-center gap-2 bg-brand-primary hover:bg-red-700 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg shadow-brand-primary/20 text-sm"
+            >
+              <Plus size={18} />
+              NEW RECIPE
+            </button>
+          )}
+        </div>
       </div>
 
       {isCreating ? (
@@ -84,6 +177,43 @@ export function RecipeBuilder() {
                 value={newRecipe.modelName}
                 onChange={e => setNewRecipe(prev => ({ ...prev, modelName: e.target.value }))}
               />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-xs font-bold text-text-muted uppercase tracking-widest">Model Image</label>
+              <div className="flex items-center gap-4 p-4 bg-black/20 border border-border border-dashed rounded-xl">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  ref={fileInputRef} 
+                  onChange={handleImageUpload} 
+                  className="hidden" 
+                />
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-20 h-20 rounded-2xl border-2 border-dashed border-white/10 hover:border-brand-primary flex items-center justify-center cursor-pointer overflow-hidden group bg-bg-dark flex-shrink-0 relative transition-all"
+                >
+                  {newRecipe.imageUrl ? (
+                    <img src={newRecipe.imageUrl} alt="Preview" className="w-full h-full object-cover group-hover:opacity-50 transition-opacity" />
+                  ) : (
+                    <ImageIcon size={32} className="text-text-muted group-hover:text-brand-primary transition-colors" />
+                  )}
+                  <div className={`absolute inset-0 flex items-center justify-center bg-black/50 ${newRecipe.imageUrl ? 'opacity-0 group-hover:opacity-100' : 'opacity-0'} transition-opacity`}>
+                    <Plus size={24} className="text-white" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-white">Upload Reference Image</p>
+                  <p className="text-xs text-text-muted mt-1 italic">Will be compressed for local storage. Click the box to pick a file.</p>
+                </div>
+                {newRecipe.imageUrl && (
+                  <button 
+                    onClick={() => setNewRecipe(prev => ({ ...prev, imageUrl: '' }))}
+                    className="text-xs font-bold text-red-500 hover:text-red-400 uppercase tracking-widest px-3 py-1 bg-red-500/10 rounded-lg transition-all"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -118,9 +248,7 @@ export function RecipeBuilder() {
                   ))}
                 </select>
 
-                <input 
-                  type="text" 
-                  placeholder="Technique (e.g. Edge Highlight)"
+                <select 
                   className="bg-bg-dark border border-border rounded-lg px-3 py-2 text-sm text-white flex-1"
                   value={step.technique}
                   onChange={e => {
@@ -128,7 +256,12 @@ export function RecipeBuilder() {
                     steps[index].technique = e.target.value;
                     setNewRecipe(prev => ({ ...prev, steps }));
                   }}
-                />
+                >
+                  <option value="" disabled>Select Technique</option>
+                  {TECHNIQUES.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
 
                 <button 
                   onClick={() => handleRemoveStep(index)}
@@ -145,10 +278,10 @@ export function RecipeBuilder() {
               onClick={handleSave}
               className="flex-1 bg-brand-primary hover:bg-red-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all"
             >
-              <Save size={20} /> SAVE RECIPE
+              <Save size={20} /> {editingId ? 'UPDATE RECIPE' : 'SAVE RECIPE'}
             </button>
             <button 
-              onClick={() => setIsCreating(false)}
+              onClick={handleCloseForm}
               className="px-8 bg-white/5 hover:bg-white/10 text-text-muted py-3 rounded-xl font-bold transition-all"
             >
               CANCEL
@@ -157,19 +290,39 @@ export function RecipeBuilder() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {recipes.map(recipe => (
-            <div key={recipe.id} className="grimdark-panel p-6 rounded-2xl group hover:border-brand-primary/50 transition-all">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-white">{recipe.name}</h3>
-                  <p className="text-text-muted text-xs uppercase tracking-widest">{recipe.modelName}</p>
+          {filteredRecipes.map(recipe => (
+            <div key={recipe.id} className="grimdark-panel rounded-2xl group hover:border-brand-primary/50 transition-all overflow-hidden flex flex-col">
+              {recipe.imageUrl && (
+                <div className="h-40 w-full overflow-hidden border-b border-border bg-black/40">
+                  <img 
+                    src={recipe.imageUrl} 
+                    alt={recipe.name} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
                 </div>
-                <button 
-                  onClick={() => deleteRecipe(recipe.id)}
-                  className="text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                >
-                  <Trash2 size={18} />
-                </button>
+              )}
+              <div className="p-6 flex-1 flex flex-col">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-white">{recipe.name}</h3>
+                    <p className="text-text-muted text-xs uppercase tracking-widest">{recipe.modelName}</p>
+                  </div>
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                  <button 
+                    onClick={() => handleEdit(recipe)}
+                    className="text-text-muted hover:text-brand-primary p-1"
+                    title="Edit Recipe"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button 
+                    onClick={() => deleteRecipe(recipe.id)}
+                    className="text-text-muted hover:text-red-500 p-1"
+                    title="Delete Recipe"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-2 mb-6">
@@ -188,19 +341,103 @@ export function RecipeBuilder() {
                 )}
               </div>
 
-              <button className="w-full py-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold tracking-widest text-text-muted hover:text-white transition-all uppercase">
-                View Full Guide
-              </button>
+                <button 
+                  onClick={() => setViewingRecipe(recipe)}
+                  className="w-full py-2 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold tracking-widest text-text-muted hover:text-white transition-all uppercase flex items-center justify-center gap-2"
+                >
+                  <Eye size={14} /> View Full Guide
+                </button>
+              </div>
             </div>
           ))}
 
-          {recipes.length === 0 && (
+          {filteredRecipes.length === 0 && (
             <div className="col-span-full h-64 border-2 border-dashed border-border rounded-3xl flex flex-col items-center justify-center text-text-muted opacity-50">
               <Palette size={48} className="mb-4" />
-              <p>No recipes saved yet.</p>
-              <button onClick={() => setIsCreating(true)} className="text-brand-primary text-sm font-bold mt-2 hover:underline">Create your first recipe</button>
+              <p>{searchQuery ? 'No recipes match your search.' : 'No recipes saved yet.'}</p>
+              {!searchQuery && (
+                <button onClick={() => { setIsCreating(true); setEditingId(null); }} className="text-brand-primary text-sm font-bold mt-2 hover:underline">
+                  Create your first recipe
+                </button>
+              )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Full Guide Modal / Overlay */}
+      {viewingRecipe && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-bg-dark border border-border w-full max-w-2xl max-h-[80vh] rounded-3xl overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b border-border flex justify-between items-center bg-white/[0.02]">
+              <div className="flex items-center gap-4">
+                {viewingRecipe.imageUrl && (
+                  <div className="w-12 h-12 rounded-lg overflow-hidden border border-border">
+                    <img src={viewingRecipe.imageUrl} className="w-full h-full object-cover" alt="" />
+                  </div>
+                )}
+                <div>
+                  <h3 className="text-2xl font-black text-white uppercase italic">{viewingRecipe.name}</h3>
+                  <p className="text-brand-primary text-xs font-bold uppercase tracking-widest">{viewingRecipe.modelName}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setViewingRecipe(null)}
+                className="p-2 hover:bg-white/5 rounded-xl text-text-muted hover:text-white transition-all"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+              <div className="space-y-6">
+                {viewingRecipe.steps.map((step, index) => {
+                  const paint = paints.find(p => p.id === step.paintId);
+                  return (
+                    <div key={index} className="flex gap-6 items-start">
+                      <div className="flex flex-col items-center">
+                        <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center text-white font-black text-sm shadow-lg shadow-brand-primary/20">
+                          {index + 1}
+                        </div>
+                        {index < viewingRecipe.steps.length - 1 && (
+                          <div className="w-0.5 h-12 bg-border mt-2" />
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 bg-white/[0.02] border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-colors">
+                        <div className="flex items-center gap-4 mb-3">
+                          <div className="w-6 h-6 rounded-lg shadow-inner" style={{ backgroundColor: paint?.hex }} />
+                          <div>
+                            <p className="text-white font-bold text-sm leading-none">{paint?.name}</p>
+                            <p className="text-[10px] text-text-muted uppercase tracking-widest mt-1">{paint?.brand} • {paint?.type}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-brand-primary/80">
+                          <BookOpen size={12} />
+                          <p className="text-sm font-medium italic">{step.technique}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-border bg-white/[0.02] flex justify-end gap-4">
+              <button 
+                onClick={() => { handleEdit(viewingRecipe); setViewingRecipe(null); }}
+                className="flex items-center gap-2 text-xs font-bold text-text-muted hover:text-white transition-colors"
+              >
+                <Pencil size={14} /> EDIT RECIPE
+              </button>
+              <button 
+                onClick={() => setViewingRecipe(null)}
+                className="bg-brand-primary hover:bg-red-700 text-white px-8 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-brand-primary/20 uppercase tracking-widest text-xs"
+              >
+                Close Guide
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -5,6 +5,8 @@ import { Plus, Trash2, Shield, Search, ExternalLink, Image as ImageIcon } from '
 import { PaintCard } from './PaintCard';
 import { FACTIONS } from '../data/factions';
 import { Paint } from '../types/paint';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { Pencil, Check, X as CloseIcon } from 'lucide-react';
 
 export function ArmyPlanner() {
   const { palettes, addPalette, removePalette, updatePalette } = useArmyStore();
@@ -184,6 +186,8 @@ function ArmyPaletteCard({ palette, paints, onUpdate, onRemove }: {
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAddingPaint, setIsAddingPaint] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({ name: palette.name, faction: palette.faction });
   const [paintSearch, setPaintSearch] = useState('');
 
   const filteredPaints = paints.filter(p => 
@@ -237,9 +241,13 @@ function ArmyPaletteCard({ palette, paints, onUpdate, onRemove }: {
     }
   };
 
-  const openInspiration = () => {
+  const openInspiration = async () => {
     const url = `https://www.google.com/search?q=Warhammer+${encodeURIComponent(palette.name)}+painting+guide+images&tbm=isch`;
-    window.open(url, '_blank');
+    try {
+      await openUrl(url);
+    } catch (err) {
+      console.error('Failed to open inspiration link:', err);
+    }
   };
 
   return (
@@ -262,13 +270,63 @@ function ArmyPaletteCard({ palette, paints, onUpdate, onRemove }: {
             </div>
           </div>
 
-          <div>
-            <h3 className="text-2xl font-bold text-white">{palette.name}</h3>
-            <p className="text-text-muted text-sm font-medium">{palette.faction}</p>
-          </div>
+          {isEditing ? (
+            <div className="flex flex-col gap-2">
+              <input 
+                type="text" 
+                className="bg-black/20 border border-brand-primary/50 rounded-lg px-3 py-1 text-white text-lg font-bold focus:outline-none"
+                value={editData.name}
+                onChange={e => setEditData(prev => ({ ...prev, name: e.target.value }))}
+                autoFocus
+              />
+              <input 
+                type="text" 
+                className="bg-black/20 border border-border rounded-lg px-3 py-1 text-text-muted text-xs focus:outline-none"
+                value={editData.faction}
+                onChange={e => setEditData(prev => ({ ...prev, faction: e.target.value }))}
+              />
+            </div>
+          ) : (
+            <div>
+              <h3 className="text-2xl font-bold text-white">{palette.name}</h3>
+              <p className="text-text-muted text-sm font-medium">{palette.faction}</p>
+            </div>
+          )}
         </div>
         
         <div className="flex items-center gap-2">
+          {isEditing ? (
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => {
+                  onUpdate(palette.id, { name: editData.name, faction: editData.faction });
+                  setIsEditing(false);
+                }}
+                className="p-2 text-green-500 hover:bg-green-500/10 rounded-lg transition-colors"
+                title="Save Changes"
+              >
+                <Check size={20} />
+              </button>
+              <button 
+                onClick={() => {
+                  setEditData({ name: palette.name, faction: palette.faction });
+                  setIsEditing(false);
+                }}
+                className="p-2 text-text-muted hover:bg-white/5 rounded-lg transition-colors"
+                title="Cancel"
+              >
+                <CloseIcon size={20} />
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={() => setIsEditing(true)}
+              className="p-2 text-text-muted hover:text-brand-primary transition-colors"
+              title="Edit Army Info"
+            >
+              <Pencil size={18} />
+            </button>
+          )}
           {isAddingPaint ? (
             <div className="relative z-30">
               <input
