@@ -1,4 +1,4 @@
-import { LayoutGrid, Palette, ListChecks, Search, Settings, Heart, RefreshCw, Image as ImageIcon, BookOpen } from 'lucide-react';
+import { LayoutGrid, Palette, ListChecks, Search, Settings, Heart, RefreshCw, Image as ImageIcon, BookOpen, Video } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -22,6 +22,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     { id: 'recipes', label: 'Paint Recipes', icon: ListChecks },
     { id: 'models', label: 'Models', icon: ImageIcon },
     { id: 'tutorials', label: 'Tutorials & Guides', icon: BookOpen },
+    { id: 'feeds', label: 'Creator Feeds', icon: Video },
   ];
 
   return (
